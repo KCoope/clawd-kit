@@ -14,7 +14,7 @@ Unofficial fan mod, not made or endorsed by Anthropic. Clawd is Anthropic's char
 
 ## Working on it
 
-After cloning, turn on the repo's own pre-push hook once:
+After cloning, turn on the pre-push hook:
 
 ```bash
 git config core.hooksPath .githooks

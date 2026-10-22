@@ -1,8 +1,6 @@
-# Clawd for Claude Code, for Windows PowerShell and PowerShell 7: Clawd in falling snow above the
-# prompt, the Clawd theme, and a dark brown window while Claude Code runs in Windows Terminal or the
-# VS Code terminal. Safe to run again: it replaces what it put there before.
+# Clawd for Claude Code on Windows PowerShell and PowerShell 7. Safe to rerun.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
-# -DocumentsDir points the PowerShell profiles somewhere else (for a test run).
+# -DocumentsDir puts the profiles elsewhere, for tests.
 param([string]$DocumentsDir = [Environment]::GetFolderPath('MyDocuments'))
 
 if ($IsMacOS -or $IsLinux) { Write-Host 'On macOS and Linux, run install.sh instead: bash install.sh'; exit 1 }
@@ -15,8 +13,7 @@ if (-not (Get-Command claude -CommandType Application -ErrorAction SilentlyConti
   exit 1
 }
 
-# The mod lives in the config folder and installs from there as a one-plugin marketplace, so
-# Claude Code reads that folder directly.
+# The mod installs from the config folder as a one-plugin marketplace.
 New-Item -ItemType Directory -Force -Path (Join-Path $config 'mods'), (Join-Path $config 'themes') | Out-Null
 if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
 Copy-Item -Recurse (Join-Path $here 'clawd') $dest
@@ -30,13 +27,11 @@ if ($plugins -notmatch 'clawd@clawd') {
 }
 Copy-Item -Force (Join-Path $here 'clawd-theme.json') (Join-Path $config 'themes\clawd.json')
 
-# The window colour is a small `claude` wrapper in the PowerShell profile: Windows PowerShell reads
-# Documents\WindowsPowerShell\profile.ps1, PowerShell 7 reads Documents\PowerShell\profile.ps1.
+# Window colour: a claude wrapper in each PowerShell profile present.
 $block = @'
 # >>> clawd window colour (added by Clawd's install.ps1; delete this block to undo)
-# Brown while Claude Code runs, the terminal's own colour back afterwards. Only Windows Terminal and
-# VS Code are known to put the colour back, so other terminals are left alone. Set CLAWD_WINDOW to
-# 1 to try it anyway, or to 0 to turn it off.
+# Brown while Claude Code runs, in Windows Terminal and VS Code only.
+# CLAWD_WINDOW=1 forces it, CLAWD_WINDOW=0 turns it off.
 function claude {
   $exe = Get-Command claude -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $exe) { Write-Error 'Claude Code is not on the PATH.'; return }
@@ -54,7 +49,7 @@ function claude {
 # <<< clawd window colour
 '@
 
-# Drops an earlier block and the blank lines just above it, the same way install.sh does.
+# Drop an old block and the blank lines above it.
 function Remove-ClawdBlock([string[]]$lines) {
   $out = New-Object System.Collections.Generic.List[string]
   $skip = $false; $blank = 0
@@ -69,8 +64,7 @@ function Remove-ClawdBlock([string[]]$lines) {
   return ,$out.ToArray()
 }
 
-# Reads a profile in the encoding it was saved in. A file with no byte-order mark and characters
-# beyond plain ASCII could be in any code page, so it is left alone rather than risk garbling it.
+# Read a profile in its own encoding; a no-BOM file with non-ASCII bytes is left alone (GOTCHAS 6).
 function Read-ClawdProfile([string]$path) {
   if (-not (Test-Path $path)) { return @{ Text = ''; Enc = (New-Object System.Text.UTF8Encoding $false) } }
   $b = [IO.File]::ReadAllBytes($path)
@@ -88,7 +82,7 @@ foreach ($p in $targets) {
   $f = Read-ClawdProfile $p
   if ($null -eq $f) { $notes.Add("$p has characters this script can't safely rewrite, so the brown window was left out of it. Paste the block from install.ps1 into it by hand if you want it."); continue }
   $kept = (Remove-ClawdBlock ($f.Text -split "\r?\n")) -join "`r`n"
-  # A command of their own named claude stays theirs; the wrapper would replace it or never run.
+  # their own claude command stays theirs
   if ($kept -match '(?im)^\s*(function\s+(global:)?claude\b|(Set|New)-Alias\s+(-Name\s+)?claude\b)') {
     $notes.Add("$p already has its own claude command, so the brown window was left out. Clawd and the theme work as usual.")
     $text = $kept
@@ -99,8 +93,7 @@ foreach ($p in $targets) {
   [IO.File]::WriteAllText($p, $text + "`r`n", $f.Enc)
 }
 
-# Profiles only load when scripts are allowed. Running this installer with -ExecutionPolicy Bypass
-# changes nothing beyond this one run, so the lasting setting is read without the Process scope.
+# Profiles load only when scripts are allowed (the lasting setting, not this run's Bypass).
 $policy = 'Undefined'
 foreach ($s in 'MachinePolicy', 'UserPolicy', 'CurrentUser', 'LocalMachine') {
   $v = [string](Get-ExecutionPolicy -Scope $s)

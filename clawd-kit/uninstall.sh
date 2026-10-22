@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Takes out everything install.sh put in: the mod and its marketplace, the theme, and the window
-# colour block in ~/.bashrc, ~/.bash_profile or ~/.zshrc. Nothing else in those files is touched.
+# Removes what install.sh added: the mod, its marketplace, the theme and the window block.
 set -euo pipefail
 
 config="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"

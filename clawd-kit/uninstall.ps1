@@ -1,5 +1,4 @@
-# Takes out everything install.ps1 put in: the mod and its marketplace, the theme, and the window
-# colour block in the PowerShell profiles. Nothing else in those files is touched.
+# Removes what install.ps1 added: the mod, its marketplace, the theme and the window block.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 param([string]$DocumentsDir = [Environment]::GetFolderPath('MyDocuments'))
 

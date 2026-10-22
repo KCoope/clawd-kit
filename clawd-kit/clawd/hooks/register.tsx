@@ -1,11 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { Register, Timer } from 'claude-code'
 
-// Clawd in falling snow, drawn in the band above the prompt. The scene (snow, pines, ground,
-// score) is one Raster; Clawd is three rows of plain text laid over it, each in a Client region
-// (clawd-sprite.tsx) that hears a press and posts 'jump'. Buttons would flip his colours under the
-// pointer and leave holes in him. Each tick bumps `frame`, which redraws the band. The engine
-// allows `$` only at a call site, so every hook that wakes the scene starts the timer itself.
+// Clawd in the snow above the prompt. The scene is one Raster; Clawd is three Client regions
+// (clawd-sprite.tsx). `$` is allowed only at call sites, so each hook starts the timer itself.
 
 const isOn = atom({ plugin: 'clawd', key: 'isOn' } as const, true)
 const frame = atom({ plugin: 'clawd', key: 'frame' } as const, 0)
@@ -18,8 +15,7 @@ const WIDTH = 9 // his widest row
 const TICK_MS = 90
 const SETTLE_TICKS = Math.round(180_000 / TICK_MS) // three quiet minutes, then the scene holds still
 const SPEED = 2 // columns the ground moves per tick while Claude works
-// Height per tick of a hop. Two rows clears a pine; a hop starts 11 or 12 columns before one,
-// which at SPEED keeps him two rows up for the whole overlap.
+// Hop height per tick; two rows clears a pine.
 const HOP = [1, 2, 2, 2, 2, 2, 2, 2, 1]
 
 const DEFAULT = 0x01000000 // the terminal's own colour
@@ -43,7 +39,7 @@ const LEGS_TUCKED: Part = { text: '▝▘ ▝▘', left: 2 }
 type Flake = { x: number; y: number; v: number; glyph: string; color: number }
 type Pine = { x: number; passed: boolean }
 
-// The scene lives in the module: a reload starts it over, which loses nothing worth keeping.
+// Scene state; a reload starts it over.
 let timer: Timer | undefined
 let site: string | undefined // the band's requestId while Clawd is drawn
 let width = 0
@@ -96,7 +92,7 @@ function jump() {
 
 // Moves the scene on one tick; true when the band should redraw.
 function advance(): boolean {
-  // Not drawn (hidden, a survey up, too narrow): the timer stops, and the next draw starts it again.
+  // not drawn: stop the timer; the next draw restarts it
   if (site === undefined || width === 0) {
     stop()
     return false
@@ -258,7 +254,7 @@ export const register: Register = on => {
     return {}
   })
 
-  // His regions failed to load or draw: from here on he is plain text, whole but not pressable.
+  // his regions failed: draw him as plain text, not pressable
   on('ui.fault', ($, e, next) => {
     if (e.module.endsWith('clawd-sprite.tsx')) {
       spriteFailed = true
@@ -276,7 +272,7 @@ export const register: Register = on => {
     }
 
     site = e.requestId
-    // Drawn again after the timer stopped for want of a band: wake the scene, unless it had settled.
+    // restart a timer that stopped for want of a band, unless the scene has settled
     if (quiet <= SETTLE_TICKS) timer ??= $.clock.every(TICK_MS, () => { if (advance()) void update($, frame, n => n + 1) })
     working = e.props.isWorking
     const columns = Math.min(e.props.bodyColumns, 512)

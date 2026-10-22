@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Clawd for Claude Code: Clawd in falling snow above the prompt, the Clawd theme, and a dark brown
-# window while Claude Code runs. For macOS, Linux, WSL and Git Bash; in Windows PowerShell, use
-# install.ps1. Safe to run again: it replaces what it put there before.
+# Clawd for Claude Code on macOS, Linux, WSL and Git Bash. Safe to rerun.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -13,8 +11,7 @@ if ! command -v claude >/dev/null 2>&1; then
   exit 1
 fi
 
-# The mod lives in the config folder and installs from there as a one-plugin marketplace, so
-# Claude Code reads that folder directly.
+# The mod installs from the config folder as a one-plugin marketplace.
 mkdir -p "$config/mods" "$config/themes"
 rm -rf "$dest"
 cp -R "$here/clawd" "$dest"
@@ -28,10 +25,7 @@ if ! claude plugin list 2>/dev/null | grep -q 'clawd@clawd'; then
 fi
 cp "$here/clawd-theme.json" "$config/themes/clawd.json"
 
-# The window colour is a small `claude` wrapper in the start-up file of the shell this person uses:
-# zsh (the macOS default) reads ~/.zshrc, bash on macOS reads ~/.bash_profile, bash elsewhere
-# ~/.bashrc. Any block an earlier version added is taken out of all three first, so a rerun or a
-# change of shell leaves exactly one.
+# Window colour: a claude wrapper in the shell's start-up file. Old blocks come out of all three first.
 zrc="${ZDOTDIR:-$HOME}/.zshrc"
 case "$(basename "${SHELL:-bash}")" in
   zsh) rc="$zrc" ;;
@@ -41,7 +35,7 @@ esac
 
 strip_block() {
   [ -f "$1" ] && grep -q '>>> clawd window colour' "$1" || return 0
-  # Blank lines wait to be printed, so the one written above the old block goes with it.
+  # drop the old block and the blank line above it
   awk '
     /^# >>> clawd window colour/ { skip = 1; blank = 0; next }
     skip { if (/^# <<< clawd window colour/) skip = 0; next }
@@ -58,16 +52,15 @@ note=""
 if [ -z "$rc" ]; then
   note="Your shell is $(basename "${SHELL:-unknown}"), so the brown window was left out. Clawd and the theme work as usual."
 elif [ -f "$rc" ] && grep -Eq '^[[:space:]]*(alias[[:space:]]+claude=|function[[:space:]]+claude([[:space:]]|\{|$)|claude[[:space:]]*\(\))' "$rc"; then
-  # A command of their own named claude stays theirs; the wrapper would replace it or never run.
+  # their own claude command stays theirs
   note="$rc already has its own claude command, so the brown window was left out. Clawd and the theme work as usual."
 else
   touch "$rc"
   cat >> "$rc" <<'EOF'
 
 # >>> clawd window colour (added by Clawd's install.sh; delete this block to undo)
-# Brown while Claude Code runs, the terminal's own colour back afterwards. Only Windows Terminal and
-# VS Code are known to put the colour back, so other terminals are left alone. CLAWD_WINDOW=1 tries
-# it anyway; CLAWD_WINDOW=0 turns it off.
+# Brown while Claude Code runs, in Windows Terminal and VS Code only.
+# CLAWD_WINDOW=1 forces it, CLAWD_WINDOW=0 turns it off.
 function claude {
   local tint=0
   if [ -t 1 ] && [ -z "${TMUX:-}" ] && [ "${CLAWD_WINDOW:-}" != 0 ]; then

@@ -1,10 +1,8 @@
 #!/bin/sh
-# Runs before any push, from the repo itself, so it guards every pusher's machine, not only the
-# ones with a local git guard. Order: clean tree, then the pushed commits scanned for secrets and
-# forbidden files, then ./check.
+# Before any push: a clean tree, a secret and forbidden-file scan, then ./check.
 fail() { printf '\n  pre-push REFUSED: %s\n\n' "$1" >&2; exit 1; }
 
-# The checks run on the working tree, so it has to be the commit being pushed.
+# the checks run on the working tree, so it must be what is pushed
 [ -z "$(git status --porcelain)" ] || fail "uncommitted changes; commit or stash so the checks test what is pushed"
 
 # Git feeds one line per ref: local ref, local sha, remote ref, remote sha.

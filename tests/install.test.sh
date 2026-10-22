@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Runs install.sh and uninstall.sh in throwaway homes: fresh, rerun, an upgrade over the previous
-# version, a change of shell, an old-style block, a person's own alias and function, fish, a
-# simulated Mac, the wrapper's choice of when to tint, then the uninstall. Needs `claude` on the
-# PATH; writes only under a temp folder.
-#   bash tests/install.test.sh            (about a minute)
+# install.sh and uninstall.sh in throwaway homes. Needs claude on the PATH. About a minute.
+#   bash tests/install.test.sh
 set -u
 KIT="$(cd "$(dirname "$0")/../clawd-kit" && pwd)"
 BASE="$(mktemp -d)"
@@ -11,7 +8,7 @@ trap 'rm -rf "$BASE"' EXIT
 pass=0; fail=0
 ok() { if eval "$2"; then echo "PASS  $1"; pass=$((pass+1)); else echo "FAIL  $1"; fail=$((fail+1)); fi; }
 home() { local h="$BASE/$1"; mkdir -p "$h"; echo "$h"; }
-# Windows Node CLIs read USERPROFILE, so it moves with HOME; cygpath exists only in Git Bash.
+# Windows CLIs read USERPROFILE; cygpath is Git Bash only
 winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi; }
 in_home() { local h="$1"; shift; env HOME="$h" USERPROFILE="$(winpath "$h")" CLAUDE_CONFIG_DIR="$h/.claude" "$@"; }
 run() { # run <home> <shell> <kit folder> <script> [extra env]
@@ -31,8 +28,7 @@ run "$h" /usr/bin/bash "$KIT" install.sh
 ok "rerun: still one block, one marketplace, one plugin" '[ "$(blocks "$h/.bashrc")" = 1 ] && [ "$(markets "$h")" = 1 ] && has_plugin "$h"'
 ok "rerun: no blank lines pile up" '[ "$(grep -c "^$" "$h/.bashrc")" -le 1 ]'
 
-# An upgrade: the same home, a kit whose mod has changed. Claude Code reads the mod from the folder
-# the installer replaces, so the new code is what loads.
+# upgrade: a changed mod over the first install
 next="$BASE/next-kit"; cp -R "$KIT" "$next"; printf '\n// upgrade marker\n' >> "$next/clawd/hooks/register.tsx"
 run "$h" /usr/bin/bash "$next" install.sh
 ok "upgrade: the new mod is in place" 'grep -q "upgrade marker" "$h/.claude/mods/clawd/hooks/register.tsx"'
@@ -68,7 +64,7 @@ mkdir -p "$h/bin"; printf '#!/bin/sh\necho Darwin\n' > "$h/bin/uname"; chmod +x 
 run "$h" /bin/bash "$KIT" install.sh PATH="$h/bin:$PATH"
 ok "Mac with bash: block in .bash_profile" '[ "$(blocks "$h/.bash_profile")" = 1 ] && [ ! -f "$h/.bashrc" ]'
 
-# The wrapper's choice of when to tint, with the terminal check forced true (no terminal here).
+# when the wrapper tints, with the terminal check forced on
 h=$(home logic)
 run "$h" /usr/bin/bash "$KIT" install.sh
 sed -n '/^function claude {/,/^}/p' "$h/.bashrc" | sed 's/\[ -t 1 \]/true/; s/command claude "\$@"/true/' > "$h/fn.sh"

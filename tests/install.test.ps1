@@ -1,7 +1,5 @@
-# Runs install.ps1 and uninstall.ps1 against throwaway config and Documents folders: fresh, rerun,
-# an upgrade, profile encodings, a person's own function and alias, the wrapper's choice of when to
-# tint, exit codes and piped input, then the uninstall. Needs `claude` on the PATH; Windows only.
-#   powershell -NoProfile -ExecutionPolicy Bypass -File tests\install.test.ps1      (about two minutes)
+# install.ps1 and uninstall.ps1 in throwaway folders. Windows only. About two minutes.
+#   powershell -NoProfile -ExecutionPolicy Bypass -File tests\install.test.ps1
 $kit = (Resolve-Path (Join-Path $PSScriptRoot '..\clawd-kit')).Path
 $Base = Join-Path ([IO.Path]::GetTempPath()) ('clawd-test-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Force $Base | Out-Null
@@ -31,7 +29,7 @@ try {
   $o = Run $h 'install.ps1'
   Ok 'rerun: still one block, one marketplace, one plugin' { (Blocks (Prof $h)) -eq 1 -and (Markets $h) -eq 1 -and (HasPlugin $h) }
 
-  # An upgrade: a kit whose mod has changed, installed over the first.
+  # upgrade: a changed mod over the first install
   $next = Join-Path $Base 'next-kit'; Copy-Item -Recurse $kit $next
   Add-Content -Path (Join-Path $next 'clawd\hooks\register.tsx') -Value '// upgrade marker' -Encoding ascii
   $o = Run $h 'install.ps1' $next
@@ -72,7 +70,7 @@ try {
   $o = Run $h 'install.ps1'
   Ok 'own alias: no block, Clawd still installed' { (Blocks $p) -eq 0 -and (Test-Path (Join-Path $h '.claude\themes\clawd.json')) }
 
-  # The wrapper's choice of when to tint, with the console check forced (output is captured here).
+  # when the wrapper tints, with the console check forced on
   $h = Join-Path $Base 'fresh'
   $fnFile = Join-Path $Base 'fn.ps1'
   [IO.File]::WriteAllText($fnFile, ([IO.File]::ReadAllText((Prof $h)) -replace '-not \[Console\]::IsOutputRedirected', '$true'))

@@ -1,31 +1,21 @@
 #!/bin/sh
-# Every check this kit has, cheapest first. The pre-push hook runs it; so can you: ./check
-# Needs bash, Python 3 and `claude`; the PowerShell suite runs where powershell.exe exists. About four
-# minutes, so it runs before a push, not on every commit. Each line says what it catches and how long
-# it took on 2026-10-22; the pre-push hook's history scan adds 0.3 s.
+# Every check; the pre-push hook runs it too. About four minutes.
 set -e
 cd "$(dirname "$0")"
-# The first Python 3 that actually runs: a Mac has python3 only, and on Windows `python3` can be the
-# Store's install prompt, which exits 49 (GOTCHAS 10).
+# First Python 3 that runs: a Mac has only python3, and on Windows it can be a Store stub (GOTCHAS 10)
 PY=""
 for c in python3 python; do
   if "$c" -c 'import sys; sys.exit(sys.version_info[0] != 3)' > /dev/null 2>&1; then PY="$c"; break; fi
 done
 [ -n "$PY" ] || { echo "check: no working Python 3 on the PATH" >&2; exit 1; }
-# Local notes only: a clone has no CLAUDE.md. A stale map or a pointer to a missing file. 0.1 s.
-if [ -f CLAUDE.md ]; then "$PY" tools/docmap.py; fi
-# A script that no longer parses. 0.1 s.
-for f in clawd-kit/install.sh clawd-kit/uninstall.sh tests/install.test.sh; do bash -n "$f"; done
-# CR line endings, non-ASCII in a script, a local path (GOTCHAS 6, 7). 0.1 s.
-"$PY" tools/make-zip.py --check
-# What the engine would refuse at load: a stored `$`, a state contract with no type. 0.7 s.
-claude plugin validate clawd-kit/clawd > /dev/null
-# The mod's behaviour, Clawd drawn with no Button among it (GOTCHAS 1). 3 s, 9 cases.
-claude plugin test clawd-kit/clawd
-# The installers, in throwaway homes: about a minute (bash) and two minutes (PowerShell).
-bash tests/install.test.sh
+if [ -f CLAUDE.md ]; then "$PY" tools/docmap.py; fi                                   # local notes map, 0.1 s
+for f in clawd-kit/install.sh clawd-kit/uninstall.sh tests/install.test.sh; do bash -n "$f"; done  # parse, 0.1 s
+"$PY" tools/make-zip.py --check                            # line endings, ASCII, local paths, 0.1 s
+claude plugin validate clawd-kit/clawd > /dev/null         # engine load refusals (stored $, untyped state), 0.7 s
+claude plugin test clawd-kit/clawd                         # the mod, 3 s
+bash tests/install.test.sh                                 # installers in throwaway homes, 1 min
 if command -v powershell.exe > /dev/null 2>&1; then
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/install.test.ps1
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/install.test.ps1  # 2 min
 else
   echo "check: SKIP the PowerShell suite (no powershell.exe here)"
 fi
