@@ -1,0 +1,5 @@
+CLAUDE.md
+clawd-kit.zip
+__pycache__/
+clawd-kit/clawd/.claude-plugin/types/
+clawd-kit/clawd/tsconfig.json

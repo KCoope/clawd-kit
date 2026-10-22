@@ -1,0 +1,5 @@
+# Every text file stays LF, on every checkout: install.sh with CR line endings fails in bash (GOTCHAS 7).
+* text=auto eol=lf
+*.png binary
+*.gif binary
+*.zip binary

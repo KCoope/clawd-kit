@@ -1,0 +1,22 @@
+#!/bin/sh
+# Runs before any push, from the repo itself, so it guards every pusher's machine, not only the
+# ones with a local git guard. Order: clean tree, then the pushed commits scanned for secrets and
+# forbidden files, then ./check.
+fail() { printf '\n  pre-push REFUSED: %s\n\n' "$1" >&2; exit 1; }
+
+# The checks run on the working tree, so it has to be the commit being pushed.
+[ -z "$(git status --porcelain)" ] || fail "uncommitted changes; commit or stash so the checks test what is pushed"
+
+# Git feeds one line per ref: local ref, local sha, remote ref, remote sha.
+zero=0000000000000000000000000000000000000000
+while read -r _ local_sha _ remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  if [ "$remote_sha" = "$zero" ]; then range="$local_sha"; else range="$remote_sha..$local_sha"; fi
+  git log -p "$range" | grep -nEi 'BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|sk-ant-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|[sr]k_live_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}|postgres(ql)?://[^:@/ ]+:[^@/ ]+@' \
+    && fail "something in the pushed commits looks like a secret; treat it as burned and rotate it"
+  git log --name-only --format= "$range" | grep -nE '(^|/)\.env($|\.)|\.csv$|CLAUDE\.md$|(^|/)MEMORY|\.(pem|key|jks|keystore)$' | grep -v '\.env\.example$' \
+    && fail "a pushed commit carries a file that must never be committed"
+done
+
+[ -x ./check ] || fail "no ./check in the repo root"
+./check || fail "./check failed"
