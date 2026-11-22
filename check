@@ -1,5 +1,5 @@
 #!/bin/sh
-# Every check; the pre-push hook runs it too. About four minutes.
+# Every check; the pre-push hook runs it too. About five minutes.
 set -e
 cd "$(dirname "$0")"
 # First Python 3 that runs: a Mac has only python3, and on Windows it can be a Store stub (GOTCHAS 10)
@@ -11,11 +11,13 @@ done
 if [ -f CLAUDE.md ]; then "$PY" tools/docmap.py; fi                                   # local notes map, 0.1 s
 for f in clawd-kit/install.sh clawd-kit/uninstall.sh tests/install.test.sh; do bash -n "$f"; done  # parse, 0.1 s
 "$PY" tools/make-zip.py --check                            # line endings, ASCII, local paths, 0.1 s
-claude plugin validate clawd-kit/clawd > /dev/null         # engine load refusals (stored $, untyped state), 0.7 s
-claude plugin test clawd-kit/clawd                         # the mod, 7 s
-bash tests/install.test.sh                                 # installers in throwaway homes, 1 min
+for mod in clawd clawd-peaks; do
+  claude plugin validate "clawd-kit/$mod" > /dev/null      # engine load refusals (stored $, untyped state), 0.7 s
+  claude plugin test "clawd-kit/$mod"                      # the mod, 7 to 11 s
+done
+bash tests/install.test.sh                                 # installers in throwaway homes, 1.5 min
 if command -v powershell.exe > /dev/null 2>&1; then
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/install.test.ps1  # 2 min
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/install.test.ps1  # 1.5 min
 else
   echo "check: SKIP the PowerShell suite (no powershell.exe here)"
 fi

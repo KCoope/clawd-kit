@@ -54,12 +54,13 @@ const rowText = async (ui: Ui, r: number) => String((await ui.find({ type: 'Text
 const rowBox = async (ui: Ui, r: number) => (await ui.find({ type: 'Box', key: `clawd-${r}` }))?.props as { top: number; left: number }
 
 // The scene's cells, decoded: three 32-bit words a cell (glyph, colour, background), row by row.
+// `word` 0 reads the glyph, 1 its colour.
 function cellsOf(base64: string, columns: number) {
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
   const words = new Uint32Array(bytes.buffer)
-  return (cx: number, cy: number) => words[(cy * columns + cx) * 3]
+  return (cx: number, cy: number, word = 0) => words[(cy * columns + cx) * 3 + word]
 }
 async function sceneHas(ui: Ui, glyphs: string[], columns = 80) {
   const glyphAt = cellsOf(String((await ui.find({ key: 'scene' }))?.props.cells), columns)
@@ -332,9 +333,10 @@ test('landing kicks up a puff of snow on both sides, gone a few ticks later', as
   const clock = await begin($, on)
   const ui = await $.ui.mount(BAND)
   const left = (await rowBox(ui, 0)).left // his widest row
+  // a puff is a '·' in the ground's colour; falling '·' flakes are other colours
   const puffs = async () => {
-    const glyphAt = cellsOf(String((await ui.find({ key: 'scene' }))?.props.cells), 80)
-    return [glyphAt(left - 1, 4), glyphAt(left + WIDTH, 4)].filter(g => g === '·'.codePointAt(0)).length
+    const cellAt = cellsOf(String((await ui.find({ key: 'scene' }))?.props.cells), 80)
+    return [left - 1, left + WIDTH].filter(cx => cellAt(cx, 4) === '·'.codePointAt(0) && cellAt(cx, 4, 1) === 0xd9e4f0).length
   }
 
   await ui.pointer({ type: 'down', x: 2, y: 0, button: 'left', in: 'clawd-0' })

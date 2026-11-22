@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Removes what install.sh added: the mod, its marketplace, the theme and the window block.
+# Removes what install.sh added: either Clawd, its marketplace, both themes and the window block.
 set -euo pipefail
 
 config="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-if command -v claude >/dev/null 2>&1; then
-  claude plugin uninstall clawd@clawd >/dev/null 2>&1 || true
-  claude plugin marketplace remove clawd >/dev/null 2>&1 || true
-fi
-rm -rf "$config/mods/clawd"
-rm -f "$config/themes/clawd.json"
+for mod in clawd clawd-peaks; do
+  if command -v claude >/dev/null 2>&1; then
+    claude plugin uninstall "$mod@$mod" >/dev/null 2>&1 || true
+    claude plugin marketplace remove "$mod" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$config/mods/$mod"
+done
+rm -f "$config/themes/clawd.json" "$config/themes/clawd-blue.json"
 
 strip_block() {
   [ -f "$1" ] && grep -q '>>> clawd window colour' "$1" || return 0

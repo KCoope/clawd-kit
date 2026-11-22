@@ -1,13 +1,16 @@
-# Removes what install.ps1 added: the mod, its marketplace, the theme and the window block.
+# Removes what install.ps1 added: either Clawd, its marketplace, both themes and the window block.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 param([string]$DocumentsDir = [Environment]::GetFolderPath('MyDocuments'))
 
 $config = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $HOME '.claude' }
-if (Get-Command claude -CommandType Application -ErrorAction SilentlyContinue) {
-  & claude plugin uninstall clawd@clawd 2>$null | Out-Null
-  & claude plugin marketplace remove clawd 2>$null | Out-Null
+foreach ($mod in 'clawd', 'clawd-peaks') {
+  if (Get-Command claude -CommandType Application -ErrorAction SilentlyContinue) {
+    & claude plugin uninstall "$mod@$mod" 2>$null | Out-Null
+    & claude plugin marketplace remove $mod 2>$null | Out-Null
+  }
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $config "mods\$mod")
 }
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $config 'mods\clawd'), (Join-Path $config 'themes\clawd.json')
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $config 'themes\clawd.json'), (Join-Path $config 'themes\clawd-blue.json')
 
 foreach ($p in (Join-Path $DocumentsDir 'WindowsPowerShell\profile.ps1'), (Join-Path $DocumentsDir 'PowerShell\profile.ps1')) {
   if (-not (Test-Path $p)) { continue }

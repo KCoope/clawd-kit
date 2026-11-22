@@ -1,6 +1,6 @@
 {
   "name": "clawd",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Clawd in falling snow above the prompt: hops the trees while Claude works, wanders and naps while you wait, jumps when pressed.",
   "author": { "name": "Studio CG" },
   "license": "MIT",

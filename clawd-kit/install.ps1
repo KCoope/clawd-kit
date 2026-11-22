@@ -1,36 +1,59 @@
 # Clawd for Claude Code on Windows PowerShell and PowerShell 7. Safe to rerun.
-#   powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+#   powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1          asks which Clawd
+#   powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 blue     or orange
 # -DocumentsDir puts the profiles elsewhere, for tests.
-param([string]$DocumentsDir = [Environment]::GetFolderPath('MyDocuments'))
+param([string]$Clawd = '', [string]$DocumentsDir = [Environment]::GetFolderPath('MyDocuments'))
 
 if ($IsMacOS -or $IsLinux) { Write-Host 'On macOS and Linux, run install.sh instead: bash install.sh'; exit 1 }
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $config = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $HOME '.claude' }
-$dest = Join-Path $config 'mods\clawd'
 
 if (-not (Get-Command claude -CommandType Application -ErrorAction SilentlyContinue)) {
   Write-Host "Claude Code isn't on the PATH in this PowerShell. Install it first, then run this again."
   exit 1
 }
 
+# Which Clawd: the argument, else the answer, else the one installed now (orange the first time).
+$current = if (Test-Path (Join-Path $config 'mods\clawd-peaks')) { 'blue' } else { 'orange' }
+if (-not $Clawd -and -not [Console]::IsInputRedirected) {
+  Write-Host 'Which Clawd?'
+  Write-Host '  1  orange, jumping trees'
+  Write-Host '  2  small and blue, hopping mountains'
+  $Clawd = Read-Host "Type 1 or 2, or press Enter for $current"
+}
+if (-not $Clawd) { $Clawd = $current }
+switch -regex ($Clawd.Trim()) {
+  '^(1|orange)$' { $mod = 'clawd'; $old = 'clawd-peaks'; $who = 'Clawd'; $theme = 'Clawd'; $shade = 'Brown'; $tint = '#211812'; $other = 'blue' }
+  '^(2|blue)$' { $mod = 'clawd-peaks'; $old = 'clawd'; $who = 'The blue Clawd'; $theme = 'Clawd Blue'; $shade = 'Navy'; $tint = '#0f1724'; $other = 'orange' }
+  default { Write-Host 'Pick orange or blue, like this: .\install.ps1 blue'; exit 1 }
+}
+$dest = Join-Path $config "mods\$mod"
+function Test-ClawdMarket($name) { ((& claude plugin marketplace list 2>$null) -join "`n") -match "(?m)^\s*> $([regex]::Escape($name))\s*$" }
+function Test-ClawdPlugin($name) { ((& claude plugin list 2>$null) -join "`n") -match "(?m)^\s*> $([regex]::Escape("$name@$name"))\s*$" }
+
+# The other Clawd comes out first: both draw in the same band and answer /clawd.
+if (Test-ClawdPlugin $old) { & claude plugin uninstall "$old@$old" | Out-Null }
+if (Test-ClawdMarket $old) { & claude plugin marketplace remove $old | Out-Null }
+$oldDir = Join-Path $config "mods\$old"
+if (Test-Path $oldDir) { Remove-Item -Recurse -Force $oldDir }
+
 # The mod installs from the config folder as a one-plugin marketplace.
 New-Item -ItemType Directory -Force -Path (Join-Path $config 'mods'), (Join-Path $config 'themes') | Out-Null
 if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-Copy-Item -Recurse (Join-Path $here 'clawd') $dest
-$markets = (& claude plugin marketplace list 2>$null) -join "`n"
-if ($markets -match '\bclawd\b') { & claude plugin marketplace update clawd } else { & claude plugin marketplace add $dest }
+Copy-Item -Recurse (Join-Path $here $mod) $dest
+if (Test-ClawdMarket $mod) { & claude plugin marketplace update $mod } else { & claude plugin marketplace add $dest }
 if ($LASTEXITCODE -ne 0) { Write-Host 'Adding the Clawd marketplace failed; the lines above say why.'; exit 1 }
-$plugins = (& claude plugin list 2>$null) -join "`n"
-if ($plugins -notmatch 'clawd@clawd') {
-  & claude plugin install clawd@clawd
+if (-not (Test-ClawdPlugin $mod)) {
+  & claude plugin install "$mod@$mod"
   if ($LASTEXITCODE -ne 0) { Write-Host 'Installing Clawd failed; the lines above say why.'; exit 1 }
 }
 Copy-Item -Force (Join-Path $here 'clawd-theme.json') (Join-Path $config 'themes\clawd.json')
+Copy-Item -Force (Join-Path $here 'clawd-blue-theme.json') (Join-Path $config 'themes\clawd-blue.json')
 
 # Window colour: a claude wrapper in each PowerShell profile present.
 $block = @'
 # >>> clawd window colour (added by Clawd's install.ps1; delete this block to undo)
-# Brown while Claude Code runs, in Windows Terminal and VS Code only.
+# @SHADE@ while Claude Code runs, in Windows Terminal and VS Code only.
 # CLAWD_WINDOW=1 forces it, CLAWD_WINDOW=0 turns it off.
 function claude {
   $exe = Get-Command claude -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -39,7 +62,7 @@ function claude {
   if ($env:CLAWD_WINDOW -ne '0' -and -not [Console]::IsOutputRedirected) {
     if ($env:WT_SESSION -or $env:TERM_PROGRAM -eq 'vscode' -or $env:CLAWD_WINDOW -eq '1') { $tint = $true }
   }
-  if ($tint) { [Console]::Write([char]27 + ']11;#211812' + [char]7) }
+  if ($tint) { [Console]::Write([char]27 + ']11;@TINT@' + [char]7) }
   try {
     if ($MyInvocation.ExpectingInput) { $input | & $exe.Source @args } else { & $exe.Source @args }
   } finally {
@@ -48,6 +71,7 @@ function claude {
 }
 # <<< clawd window colour
 '@
+$block = $block.Replace('@SHADE@', $shade).Replace('@TINT@', $tint)
 
 # Drop an old block and the blank lines above it.
 function Remove-ClawdBlock([string[]]$lines) {
@@ -80,11 +104,11 @@ $targets = @(Join-Path $DocumentsDir 'WindowsPowerShell\profile.ps1')
 if ((Get-Command pwsh -ErrorAction SilentlyContinue) -or (Test-Path (Join-Path $DocumentsDir 'PowerShell'))) { $targets += Join-Path $DocumentsDir 'PowerShell\profile.ps1' }
 foreach ($p in $targets) {
   $f = Read-ClawdProfile $p
-  if ($null -eq $f) { $notes.Add("$p has characters this script can't safely rewrite, so the brown window was left out of it. Paste the block from install.ps1 into it by hand if you want it."); continue }
+  if ($null -eq $f) { $notes.Add("$p has characters this script can't safely rewrite, so the window colour was left out of it. Paste the block from install.ps1 into it by hand if you want it."); continue }
   $kept = (Remove-ClawdBlock ($f.Text -split "\r?\n")) -join "`r`n"
   # their own claude command stays theirs
   if ($kept -match '(?im)^\s*(function\s+(global:)?claude\b|(Set|New)-Alias\s+(-Name\s+)?claude\b)') {
-    $notes.Add("$p already has its own claude command, so the brown window was left out. Clawd and the theme work as usual.")
+    $notes.Add("$p already has its own claude command, so the window colour was left out. Clawd and the theme work as usual.")
     $text = $kept
   } else {
     $text = $kept.TrimEnd("`r", "`n") + $(if ($kept.Trim()) { "`r`n`r`n" } else { '' }) + ($block -replace "\r?\n", "`r`n")
@@ -101,10 +125,11 @@ foreach ($s in 'MachinePolicy', 'UserPolicy', 'CurrentUser', 'LocalMachine') {
 }
 if ($policy -eq 'Undefined') { $policy = 'Restricted' }
 if ($policy -eq 'Restricted' -or $policy -eq 'AllSigned') {
-  $notes.Add("PowerShell is set to $policy, so it won't load the profile that holds the brown window. To allow it: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned")
+  $notes.Add("PowerShell is set to $policy, so it won't load the profile that holds the window colour. To allow it: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned")
 }
 
 Write-Host ''
-Write-Host 'Clawd is installed. Open a new terminal tab, type claude, run /theme and pick Clawd.'
+Write-Host "$who is installed. Open a new terminal tab, type claude, run /theme and pick $theme."
 Write-Host 'In VS Code, start it in the terminal (View, Terminal). The Claude Code chat panel does not show him.'
+Write-Host "To switch to the $other Clawd later, run: .\install.ps1 $other"
 foreach ($n in $notes) { Write-Host $n }

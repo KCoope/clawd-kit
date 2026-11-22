@@ -47,3 +47,11 @@ and the date. Number them; cite the number from the code that the trap touches.
     passes `{ timeoutMs }`; the nap and tree tests run thousands of ticks (2 to 4 s alone) and hit
     7.0 s and 6.4 s on a busy machine. They take `LONG` (30 s). A failure that names a long test
     and does not repeat on the next run is this. (2026-11-22)
+16. **Match a Clawd's marketplace or plugin name whole.** `grep -w clawd` and PowerShell's
+    `\bclawd\b` also match `clawd-peaks`, since `-` ends a word, and `claude plugin marketplace
+    remove` exits 1 for a name that isn't there, so `install.sh` stopped partway. Both installers
+    match the whole line (`> clawd$`). An installer test also checks the run finished: one that
+    dies partway leaves the last install in place, which looks right. (2026-11-22)
+17. **The installers ask which Clawd when their input is a terminal,** so a suite started from a
+    terminal would sit at the question. `run` and `pick` in the bash suite read from /dev/null, and
+    `Run` in the PowerShell suite pipes its input in. (2026-11-22)
