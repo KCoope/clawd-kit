@@ -22,6 +22,7 @@ DESCRIBED = {
     "tests": "the installers' tests, run in throwaway homes",
     "tools": "docmap.py (this checker) and make-zip.py (builds and checks clawd-kit.zip)",
     "README.md": "the repo's front page: what it is, working on it, cutting a release",
+    "done": "build records, one per task; local only (listed in .git/info/exclude), never committed",
 }
 DESCRIBED_APP = {}
 SKIP = {"CLAUDE.md", "GOTCHAS.md", "check", "clawd-kit.zip", "__pycache__", ".git", ".githooks", "node_modules", ".next", ".data", "e2e-out"}
