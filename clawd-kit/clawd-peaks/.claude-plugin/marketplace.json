@@ -1,0 +1,5 @@
+{
+  "name": "clawd-peaks",
+  "owner": { "name": "Studio CG" },
+  "plugins": [{ "name": "clawd-peaks", "source": "./" }]
+}

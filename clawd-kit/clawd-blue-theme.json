@@ -1,0 +1,15 @@
+{
+  "name": "Clawd Blue",
+  "base": "dark",
+  "overrides": {
+    "claude": "#5aa9ff",
+    "claudeShimmer": "#9ccbff",
+    "promptBorder": "#3f6ea8",
+    "promptBorderShimmer": "#6d9fd8",
+    "userMessageBackground": "#1a2638",
+    "text": "#e6eef8",
+    "inactive": "#8fa1b8",
+    "subtle": "#3a4a60",
+    "selectionBg": "#2f5f99"
+  }
+}

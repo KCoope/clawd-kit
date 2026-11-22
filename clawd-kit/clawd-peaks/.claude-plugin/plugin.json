@@ -1,0 +1,8 @@
+{
+  "name": "clawd-peaks",
+  "version": "0.2.0",
+  "description": "A small blue Clawd in falling snow above the prompt: hops snow-capped mountains while Claude works, wanders and naps while you wait, jumps when pressed.",
+  "author": { "name": "Studio CG" },
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}

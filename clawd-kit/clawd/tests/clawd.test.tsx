@@ -75,7 +75,8 @@ function cellsOf(base64: string, columns = COLUMNS) {
   const at = (cx: number, cy: number) => (cy * columns + cx) * 3
   return {
     glyph: (cx: number, cy: number) => words[at(cx, cy)],
-    tree: (cx: number, cy: number) => TREE.has(words[at(cx, cy) + 1] ?? 0) || TREE.has(words[at(cx, cy) + 2] ?? 0),
+    colour: (cx: number, cy: number) => words[at(cx, cy) + 1],
+    tree:(cx: number, cy: number) => TREE.has(words[at(cx, cy) + 1] ?? 0) || TREE.has(words[at(cx, cy) + 2] ?? 0),
     trunk: (cx: number, cy: number) => words[at(cx, cy) + 1] === TRUNK || words[at(cx, cy) + 2] === TRUNK,
     // the greens a cell shows, in its glyph and its background
     greens: (cx: number, cy: number) => [words[at(cx, cy) + 1] ?? 0, words[at(cx, cy) + 2] ?? 0].filter(c => c !== TRUNK && TREE.has(c)),
@@ -331,7 +332,8 @@ test('trees vary: tall ones a pixel taller than Clawd show a trunk, young ones k
   const allGreens = new Set<number>()
   let oneTone = 0
   let whole = 0
-  for (let tick = 0; tick < 900; tick += 1) {
+  // about 11 tall trees in 900 ticks, so the bare one can miss (1 run in 80): watch on until all four kinds show
+  for (let tick = 0; tick < 3000 && !(tick >= 900 && looks.size === 4); tick += 1) {
     await clock.advance(TICK_MS)
     const scene = await sceneOf(ui)
     // nothing of a tree above row 2: a tall tip fills the upper half of row 2 and no more
@@ -452,9 +454,10 @@ test('landing kicks up a puff of snow on both sides, gone a few ticks later', as
   const clock = await begin($, on)
   const ui = await $.ui.mount(BAND)
   const left = (await rowBox(ui, 1))?.left ?? NaN // his widest row
+  // a puff is a '·' in the ground's colour; falling '·' flakes are other colours
   const puffs = async () => {
-    const { glyph } = await sceneOf(ui)
-    return [glyph(left - 1, 4), glyph(left + WIDTH, 4)].filter(g => g === '·'.codePointAt(0)).length
+    const { glyph, colour } = await sceneOf(ui)
+    return [left - 1, left + WIDTH].filter(cx => glyph(cx, 4) === '·'.codePointAt(0) && colour(cx, 4) === 0xd9dfe6).length
   }
 
   await ui.pointer({ type: 'down', x: 3, y: 0, button: 'left', in: 'clawd-1' })
