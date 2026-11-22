@@ -1,4 +1,4 @@
-# install.ps1 and uninstall.ps1 in throwaway folders. Windows only. About two minutes.
+# install.ps1 and uninstall.ps1 in throwaway folders. Windows only. About 1.5 minutes.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tests\install.test.ps1
 $kit = (Resolve-Path (Join-Path $PSScriptRoot '..\clawd-kit')).Path
 $Base = Join-Path ([IO.Path]::GetTempPath()) ('clawd-test-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
@@ -8,7 +8,7 @@ $script:pass = 0; $script:fail = 0
 function Ok($name, [scriptblock]$test) { $r = $false; try { $r = [bool](& $test) } catch { $r = $false }; if ($r) { "PASS  $name"; $script:pass++ } else { "FAIL  $name"; $script:fail++ } }
 function Home($n) { $h = Join-Path $Base $n; New-Item -ItemType Directory -Force (Join-Path $h 'Documents') | Out-Null; $h }
 function Use($h) { $env:USERPROFILE = $h; $env:HOME = $h; $env:CLAUDE_CONFIG_DIR = Join-Path $h '.claude' }
-# Input is always piped, so the installer never waits at its question; $answer is what it reads.
+# Input is always piped, so the installer never waits at its question (GOTCHAS 17); $answer is what it reads.
 function Run($h, $s, $from = $kit, $choice = '', $answer = '') {
   Use $h
   $extra = @(); if ($choice) { $extra = @('-Clawd', $choice) }
@@ -88,7 +88,8 @@ try {
   $p = Prof $h
   $o = Run $h 'install.ps1' $kit 'blue'
   Ok 'blue: only the blue mod, plugin and marketplace' { $script:code -eq 0 -and (Clawds $h) -eq $Blue }
-  Ok 'blue: one navy block, both themes, says to pick Clawd Blue' { $t = [IO.File]::ReadAllText($p); (Blocks $p) -eq 1 -and $t.Contains(']11;#0f1724') -and $t -match '(?m)^# Navy while' -and -not $t.Contains('211812') -and (Test-Path (Join-Path $h '.claude\themes\clawd.json')) -and $o -match 'pick Clawd Blue\.' }
+  # the switch hint is the full command: a bare .\install.ps1 is refused under the default execution policy
+  Ok 'blue: one navy block, both themes, says to pick Clawd Blue and how to switch' { $t = [IO.File]::ReadAllText($p); (Blocks $p) -eq 1 -and $t.Contains(']11;#0f1724') -and $t -match '(?m)^# Navy while' -and -not $t.Contains('211812') -and (Test-Path (Join-Path $h '.claude\themes\clawd.json')) -and $o -match 'pick Clawd Blue\.' -and $o -match 'run: powershell -NoProfile -ExecutionPolicy Bypass -File \.\\install\.ps1 orange' }
   $o = Run $h 'install.ps1'
   Ok 'blue, rerun with no choice: stays blue' { $script:code -eq 0 -and $o -notmatch 'Failed' -and (Clawds $h) -eq $Blue -and [IO.File]::ReadAllText($p).Contains(']11;#0f1724') -and (Blocks $p) -eq 1 }
   $o = Run $h 'install.ps1' $kit 'orange'
@@ -96,7 +97,7 @@ try {
   $o = Run $h 'install.ps1' $kit 'Blue'
   Ok 'switch back, in capitals: only blue left' { $script:code -eq 0 -and (Clawds $h) -eq $Blue }
   $o = Run $h 'install.ps1' $kit 'green'
-  Ok 'a word that is not orange or blue: stops, says so, changes nothing' { $script:code -eq 1 -and $o -match 'Pick orange or blue' -and (Clawds $h) -eq $Blue }
+  Ok 'a word that is not orange or blue: stops, says so, changes nothing' { $script:code -eq 1 -and $o -match 'Pick orange or blue, like this: powershell -NoProfile -ExecutionPolicy Bypass -File \.\\install\.ps1 blue' -and (Clawds $h) -eq $Blue }
 
   # the question, with the console check forced on; Read-Host takes the piped answer
   $ask = Join-Path $Base 'ask-kit'; Copy-Item -Recurse $kit $ask

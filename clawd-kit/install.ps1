@@ -25,9 +25,10 @@ if (-not $Clawd) { $Clawd = $current }
 switch -regex ($Clawd.Trim()) {
   '^(1|orange)$' { $mod = 'clawd'; $old = 'clawd-peaks'; $who = 'Clawd'; $theme = 'Clawd'; $shade = 'Brown'; $tint = '#211812'; $other = 'blue' }
   '^(2|blue)$' { $mod = 'clawd-peaks'; $old = 'clawd'; $who = 'The blue Clawd'; $theme = 'Clawd Blue'; $shade = 'Navy'; $tint = '#0f1724'; $other = 'orange' }
-  default { Write-Host 'Pick orange or blue, like this: .\install.ps1 blue'; exit 1 }
+  default { Write-Host 'Pick orange or blue, like this: powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 blue'; exit 1 }
 }
 $dest = Join-Path $config "mods\$mod"
+# whole names, since clawd also matches clawd-peaks (GOTCHAS 16)
 function Test-ClawdMarket($name) { ((& claude plugin marketplace list 2>$null) -join "`n") -match "(?m)^\s*> $([regex]::Escape($name))\s*$" }
 function Test-ClawdPlugin($name) { ((& claude plugin list 2>$null) -join "`n") -match "(?m)^\s*> $([regex]::Escape("$name@$name"))\s*$" }
 
@@ -131,5 +132,5 @@ if ($policy -eq 'Restricted' -or $policy -eq 'AllSigned') {
 Write-Host ''
 Write-Host "$who is installed. Open a new terminal tab, type claude, run /theme and pick $theme."
 Write-Host 'In VS Code, start it in the terminal (View, Terminal). The Claude Code chat panel does not show him.'
-Write-Host "To switch to the $other Clawd later, run: .\install.ps1 $other"
+Write-Host "To switch to the $other Clawd later, run: powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 $other"
 foreach ($n in $notes) { Write-Host $n }
