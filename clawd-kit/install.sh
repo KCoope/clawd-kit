@@ -31,8 +31,10 @@ case "$choice" in
   *) echo "Pick orange or blue, like this: bash install.sh blue" >&2; exit 1 ;;
 esac
 dest="$config/mods/$mod"
-has_market() { claude plugin marketplace list 2>/dev/null | grep -Eq "^[[:space:]]*> $1\$"; }
-has_plugin() { claude plugin list 2>/dev/null | grep -Eq "^[[:space:]]*> $1@$1\$"; }
+# whole names, since clawd also matches clawd-peaks (GOTCHAS 16); the list is read first, so an
+# early grep exit can't cut claude off and fail the pipe
+has_market() { local l; l="$(claude plugin marketplace list 2>/dev/null)" || true; grep -Eq "^[[:space:]]*> $1\$" <<< "$l"; }
+has_plugin() { local l; l="$(claude plugin list 2>/dev/null)" || true; grep -Eq "^[[:space:]]*> $1@$1\$" <<< "$l"; }
 
 # The other Clawd comes out first: both draw in the same band and answer /clawd.
 if has_plugin "$old"; then claude plugin uninstall "$old@$old" >/dev/null; fi

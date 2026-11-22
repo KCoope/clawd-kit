@@ -76,7 +76,7 @@ function cellsOf(base64: string, columns = COLUMNS) {
   return {
     glyph: (cx: number, cy: number) => words[at(cx, cy)],
     colour: (cx: number, cy: number) => words[at(cx, cy) + 1],
-    tree:(cx: number, cy: number) => TREE.has(words[at(cx, cy) + 1] ?? 0) || TREE.has(words[at(cx, cy) + 2] ?? 0),
+    tree: (cx: number, cy: number) => TREE.has(words[at(cx, cy) + 1] ?? 0) || TREE.has(words[at(cx, cy) + 2] ?? 0),
     trunk: (cx: number, cy: number) => words[at(cx, cy) + 1] === TRUNK || words[at(cx, cy) + 2] === TRUNK,
     // the greens a cell shows, in its glyph and its background
     greens: (cx: number, cy: number) => [words[at(cx, cy) + 1] ?? 0, words[at(cx, cy) + 2] ?? 0].filter(c => c !== TRUNK && TREE.has(c)),

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh and uninstall.sh in throwaway homes. Needs claude on the PATH. About a minute.
+# install.sh and uninstall.sh in throwaway homes. Needs claude on the PATH. About 1.5 minutes.
 #   bash tests/install.test.sh
 set -u
 KIT="$(cd "$(dirname "$0")/../clawd-kit" && pwd)"
@@ -11,7 +11,7 @@ home() { local h="$BASE/$1"; mkdir -p "$h"; echo "$h"; }
 # Windows CLIs read USERPROFILE; cygpath is Git Bash only
 winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi; }
 in_home() { local h="$1"; shift; env HOME="$h" USERPROFILE="$(winpath "$h")" CLAUDE_CONFIG_DIR="$h/.claude" "$@"; }
-run() { # run <home> <shell> <kit folder> <script> [extra env]; no terminal, so no question
+run() { # run <home> <shell> <kit folder> <script> [extra env]; no terminal, so no question (GOTCHAS 17)
   local h="$1" sh="$2" kit="$3" s="$4"; shift 4
   in_home "$h" env SHELL="$sh" "$@" bash "$kit/$s" > "$h/out.txt" 2>&1 < /dev/null
 }
@@ -79,7 +79,7 @@ ok "Mac with bash: block in .bash_profile" '[ "$(blocks "$h/.bash_profile")" = 1
 h=$(home blue)
 pick "$h" blue
 ok "blue: only the blue mod, plugin and marketplace" '[ "$(cat "$h/code")" = 0 ] && [ "$(clawds "$h")" = "$BLUE" ]'
-ok "blue: one navy block, both themes, says to pick Clawd Blue" '[ "$(blocks "$h/.bashrc")" = 1 ] && grep -q "11;#0f1724" "$h/.bashrc" && grep -q "^# Navy while" "$h/.bashrc" && ! grep -q 211812 "$h/.bashrc" && [ -f "$h/.claude/themes/clawd.json" ] && grep -q "pick Clawd Blue\.$" "$h/out.txt"'
+ok "blue: one navy block, both themes, says to pick Clawd Blue and how to switch" '[ "$(blocks "$h/.bashrc")" = 1 ] && grep -q "11;#0f1724" "$h/.bashrc" && grep -q "^# Navy while" "$h/.bashrc" && ! grep -q 211812 "$h/.bashrc" && [ -f "$h/.claude/themes/clawd.json" ] && grep -q "pick Clawd Blue\.$" "$h/out.txt" && grep -q "run: bash install.sh orange$" "$h/out.txt"'
 run "$h" /usr/bin/bash "$KIT" install.sh
 ok "blue, rerun with no choice: stays blue" 'grep -q "is installed" "$h/out.txt" && ! grep -q Failed "$h/out.txt" && [ "$(clawds "$h")" = "$BLUE" ] && grep -q "11;#0f1724" "$h/.bashrc" && [ "$(blocks "$h/.bashrc")" = 1 ]'
 pick "$h" orange
