@@ -105,5 +105,6 @@ if ($policy -eq 'Restricted' -or $policy -eq 'AllSigned') {
 }
 
 Write-Host ''
-Write-Host 'Clawd is installed. Open a new terminal tab, start Claude Code, run /theme and pick Clawd.'
+Write-Host 'Clawd is installed. Open a new terminal tab, type claude, run /theme and pick Clawd.'
+Write-Host 'In VS Code, start it in the terminal (View, Terminal). The Claude Code chat panel does not show him.'
 foreach ($n in $notes) { Write-Host $n }

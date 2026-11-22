@@ -77,5 +77,6 @@ EOF
 fi
 
 echo
-echo "Clawd is installed. Open a new terminal tab, start Claude Code, run /theme and pick Clawd."
+echo "Clawd is installed. Open a new terminal tab, type claude, run /theme and pick Clawd."
+echo "In VS Code, start it in the terminal (View, Terminal). The Claude Code chat panel does not show him."
 if [ -n "$note" ]; then echo "$note"; fi
