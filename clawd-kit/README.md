@@ -1,6 +1,6 @@
 # Clawd for Claude Code
 
-Clawd stands in the snow above your Claude Code prompt. When Claude is working he runs and jumps the trees, and if you click him he hops.
+Clawd stands in the snow above your Claude Code prompt. When Claude is working he runs and jumps the trees, and if you click him he hops and sends up a heart.
 
 It comes with an orange-on-brown theme. In Windows Terminal and the VS Code terminal, the window also goes dark brown while Claude Code is open.
 
@@ -24,13 +24,15 @@ From the `clawd-kit` folder, run `bash install.sh`.
 
 ## Then
 
-Open a new terminal tab, start Claude Code, run `/theme` and pick **Clawd**.
+Open a new terminal tab, type `claude` to start Claude Code, run `/theme` and pick **Clawd**.
+
+Clawd only shows in Claude Code running in a terminal. In VS Code that means its terminal (**View**, then **Terminal**), not the Claude Code extension's chat panel, which shows neither him nor the theme. To make the extension open in the terminal instead, turn on **Claude Code: Use Terminal** in VS Code's settings.
 
 ## Good to know
 
-- Click Clawd to make him jump.
+- Click Clawd to make him jump. If a click only selects text, run `/tui fullscreen`: in fullscreen mode Claude Code gets the mouse, so the click reaches him.
 - `/clawd` hides him. Run it again to bring him back.
-- After three quiet minutes he holds still, and your next prompt wakes him.
+- After three quiet minutes he curls up for a nap while the snow keeps falling. A click or your next prompt wakes him.
 - The brown window only happens in Windows Terminal and the VS Code terminal, the two that put your own colour back when Claude Code closes. Other terminals keep their colour, and Clawd and the theme work the same. Set `CLAWD_WINDOW=1` to try it in another terminal, or `CLAWD_WINDOW=0` to switch it off.
 - If you already have your own `claude` command (an alias or a function), the installer leaves it alone and skips the brown window.
 - No Clawd? Run `claude update`, then start Claude Code again.

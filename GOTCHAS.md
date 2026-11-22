@@ -31,3 +31,8 @@ and the date. Number them; cite the number from the code that the trap touches.
 10. **On Windows, `command -v python3` can find the Microsoft Store's install prompt,** which exits
     49, so `./check` died and the pre-push hook refused the first push. `check` runs each candidate
     and keeps the first real Python 3. Run `./check` after every change to it. (2026-10-22)
+11. **A click in classic mode stays with the terminal.** It turns into a one-cell text selection and
+    the mod never hears it (seen in mintty). Fullscreen mode (`/tui fullscreen`) routes clicks to the
+    mod. The install README tells people. (2026-11-22)
+12. **Idle hops leave his sleep timer alone.** A hop that reset the quiet counter kept him awake for
+    good. `jump(seq, wake)` takes `wake = false` for idle hops; the sleep test caught it. (2026-11-22)

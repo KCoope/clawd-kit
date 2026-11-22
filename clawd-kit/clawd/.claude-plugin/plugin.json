@@ -1,7 +1,7 @@
 {
   "name": "clawd",
-  "version": "0.2.0",
-  "description": "Clawd in falling snow above the prompt: runs while Claude works, wanders while you wait, jumps when pressed.",
+  "version": "0.3.0",
+  "description": "Clawd in falling snow above the prompt: hops the pines while Claude works, wanders and naps while you wait, jumps when pressed.",
   "author": { "name": "Studio CG" },
   "license": "MIT",
   "types": "./types/index.d.ts"

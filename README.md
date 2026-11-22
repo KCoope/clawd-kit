@@ -1,6 +1,6 @@
 # Clawd for Claude Code
 
-Clawd, Claude Code's mascot, in the snow above your prompt. When Claude is working he runs and jumps the trees, and if you click him he hops.
+Clawd, Claude Code's mascot, in the snow above your prompt. When Claude is working he runs and jumps the trees, and if you click him he hops and sends up a heart. Between turns he wanders, looks around and naps.
 
 It comes with an orange-on-brown theme. In Windows Terminal and the VS Code terminal, the window also goes dark brown while Claude Code is open.
 
