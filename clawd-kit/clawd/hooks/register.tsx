@@ -1,12 +1,13 @@
 import { atom, read, update } from 'claude-code'
 import type { Register, Timer } from 'claude-code'
 
-// Clawd in the snow above the prompt: he runs and hops pines while Claude works, wanders while you
+// Clawd in the snow above the prompt: he runs and hops trees while Claude works, wanders while you
 // wait, jumps when pressed. The scene is one Raster; Clawd is three Client regions
 // (clawd-sprite.tsx). `$` is allowed only at call sites, so each hook starts the timer itself.
 // 0.3.0 (2026-11-22) adds behaviour only: crouch and squash around jumps, eyes that follow him, a
 // nap, a heart, reactions to work starting and ending. His look, orange, the pines and the snow are
-// unchanged.
+// unchanged. 0.4.0: six trees, young ones with no trunk, a tall one in every 2 to 4 a little taller
+// than him; he stands on the snow and tucks his feet in at the top of a jump to clear them.
 
 const isOn = atom({ plugin: 'clawd', key: 'isOn' } as const, true)
 const frame = atom({ plugin: 'clawd', key: 'frame' } as const, 0)
@@ -21,10 +22,12 @@ const TICK_MS = 90
 // (one redraw in four). Before 0.3.0 the scene held still instead, which read as frozen.
 const SETTLE_TICKS = Math.round(180_000 / TICK_MS)
 const SLOW_EVERY = 4
-// Lift per tick of a jump: a crouch first (anticipation), then up two rows, which clears a pine.
-// He crouches 2 or 3 columns before a pine (JUMP_AT). The test checks every frame for an overlap.
+// Lift per tick of a jump: a crouch first (anticipation), then up two rows. Over a big tree his feet
+// tuck in at the top, which clears it by a hair. He crouches 4 or 5 columns before a tree (JUMP_AT): at lift 1
+// his arms reach the column in front of him, and the slim tree's top row starts at its left edge,
+// so 2 or 3 clipped it. The test checks every frame for an overlap.
 const HOP = [0, 1, 2, 2, 2, 2, 2, 2, 2, 1]
-const JUMP_AT = [2, 3]
+const JUMP_AT = [4, 5]
 // A little happy hop when a turn ends: crouch, up one row, down.
 const HAPPY = [0, 1, 1, 0]
 const LAND_TICKS = 2 // he squashes on landing
@@ -36,14 +39,16 @@ const SNOW_FAR = 0x8f9aa6
 const GROUND_SNOW = 0xd9dfe6
 const PINE = 0x4f8f5a
 const PINE_TOP = 0x7fb38a
+const TRUNK = 0x8b5e3c
 const SCORE = 0xa87a5f
 const ORANGE = '#d97757'
 const FLAKES = ['✻', '✽', '✶', '✢', '*', '·', '·', '.']
 
-// Clawd as pixels, turned into quadrant glyphs (2 x 2 pixels a cell): an 18 x 6 grid whose standing
-// frame is the original Clawd exactly (` ▐▛███▜▌` / `▝▜█████▛▘` / `  ▘▘ ▝▝`). The grid lets the same
-// shape crouch one pixel lower with his legs tucked (before a jump, landing, breathing, asleep) and
-// move his eyes to look where he goes.
+// Clawd as pixels, turned into quadrant glyphs (2 x 2 pixels a cell): an 18 x 6 grid holding the
+// original Clawd (` ▐▛███▜▌` / `▝▜█████▛▘` / `  ▘▘ ▝▝`). Standing, the grid puts him one pixel
+// lower than the original rows, so his legs meet the snow the trees stand on. The same shape
+// crouches with his legs hidden (before a jump, landing, breathing, asleep; the original two rows
+// exactly), tucks his feet in at the top of a jump, and moves his eyes to look where he goes.
 const PX = 18
 const GLYPH = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'
 const pxRow = (on: (i: number) => boolean) => Array.from({ length: PX }, (_, i) => (on(i) ? '#' : '.')).join('')
@@ -55,10 +60,10 @@ const eyesPx = (gaze: number, shut: boolean) =>
   pxRow(i => i >= 3 && i <= 14 && (shut || (i !== 5 + gaze && i !== 12 + gaze)))
 const LEGS_PX = pxRow(i => [4, 6, 11, 13].includes(i))
 const STEP_PX = pxRow(i => [5, 7, 10, 12].includes(i))
-const TUCK_PX = pxRow(i => [5, 6, 11, 12].includes(i)) // in the air
+const TUCK_PX = pxRow(i => [5, 6, 11, 12].includes(i)) // on the way up and down
 
 type Part = { text: string; left: number }
-type Pose = 'stand' | 'step' | 'tuck' | 'crouch'
+type Pose = 'stand' | 'step' | 'tuck' | 'apex' | 'crouch'
 type Eyes = 'open' | 'left' | 'right' | 'shut'
 
 function glyphRows(px: string[]): Part[] {
@@ -78,9 +83,11 @@ function glyphRows(px: string[]): Part[] {
 function sprite(pose: Pose, eyes: Eyes): Part[] {
   const gaze = eyes === 'left' ? -1 : eyes === 'right' ? 1 : 0
   const face = eyesPx(gaze, eyes === 'shut')
-  if (pose === 'crouch') return glyphRows([BLANK, HEAD_PX, face, ARMS_PX, BODY_PX, BLANK])
+  // crouch and apex leave one row empty: his top row or his legs row
+  if (pose === 'crouch') return glyphRows([BLANK, BLANK, HEAD_PX, face, ARMS_PX, BODY_PX])
+  if (pose === 'apex') return glyphRows([HEAD_PX, face, ARMS_PX, BODY_PX, BLANK, BLANK])
   const legs = pose === 'step' ? STEP_PX : pose === 'tuck' ? TUCK_PX : LEGS_PX
-  return glyphRows([HEAD_PX, face, ARMS_PX, BODY_PX, legs, BLANK])
+  return glyphRows([BLANK, HEAD_PX, face, ARMS_PX, BODY_PX, legs])
 }
 
 const PUFF = '·'
@@ -95,8 +102,76 @@ const ZZZ = ['z', 'z', 'Z']
 const ZZZ_COLOR = 0xf0a27e
 
 type Flake = { x: number; y: number; v: number; glyph: string; color: number }
-type Pine = { x: number; passed: boolean }
-const PINE_WIDTH = 4
+
+// Trees as pixels on the same 2 x 2 grid as Clawd, one letter a pixel: l lit upper branches,
+// g lower branches, t trunk, . nothing. A cell shows at most two colours (its glyph's and its
+// background), so a design needing three in one cell is refused at load (GOTCHAS 13): the light and
+// dark tiers change on a cell row, and a trunk fills a whole cell in the middle of a tree an odd
+// number of cells wide. Young trees keep their branches to the snow and show no trunk; bigger ones
+// show more. The tall ones (6 pixels) stand a pixel taller than Clawd; 6 is the most a jump clears.
+// Each tree takes one of three greens.
+const GREENS: Record<string, number>[] = [
+  { l: PINE_TOP, g: PINE }, // pine, the 0.3.0 colours
+  { l: 0x6da693, g: 0x3b7560 }, // fir
+  { l: 0x9dc27c, g: 0x5e934e }, // spring
+]
+const SHORT_TREES = [
+  ['..ll..', '.gggg.', 'gggggg'], // tiny
+  ['....ll....', '...llll...', '..gggggg..', '.gggggggg.'], // young
+  ['....ll....', '...llll...', '..llllll..', '.gggggggg.', '....tt....'], // level with his head
+]
+const TALL_TREES = [
+  ['..ll..', '.llll.', '.gggg.', 'gggggg', 'gggggg', '..tt..'], // slim
+  ['....ll....', '...llll...', '..gggggg..', '...gggg...', '.gggggggg.', '....tt....'], // tiered
+  ['....ll....', '...llll...', '..gggggg..', '.gggggggg.', '....tt....', '....tt....'], // bare trunk
+]
+type TreeCell = { dx: number; dy: number; glyph: string; fg: number; bg: number } // dy: rows above FEET
+// big: it reaches his head's row (5 pixels or more), so he tucks his feet in to clear it
+type TreeShape = { cells: TreeCell[]; width: number; big: boolean; id: string; green: number }
+
+function treeShape(design: string[], id: string, green: number): TreeShape {
+  const palette: Record<string, number> = { ...GREENS[green], t: TRUNK }
+  const width = (design[0]?.length ?? 0) / 2
+  if (!Number.isInteger(width) || design.some(r => r.length !== width * 2) || design.length > 6) {
+    throw new Error('a tree is an even number of pixels wide, every row the same, at most 6 tall')
+  }
+  const px = design.length % 2 === 0 ? design : ['.'.repeat(width * 2), ...design] // pairs rows from the top
+  const rows = px.length / 2
+  const cells: TreeCell[] = []
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < width; c += 1) {
+      // upper left, upper right, lower left, lower right: the bit order of GLYPH
+      const quad = [px[2 * r]?.[2 * c], px[2 * r]?.[2 * c + 1], px[2 * r + 1]?.[2 * c], px[2 * r + 1]?.[2 * c + 1]].map(p => p ?? '.')
+      const colours = [...new Set(quad.filter(p => p !== '.'))]
+      if (colours.length === 0) continue
+      if (colours.length + (quad.includes('.') ? 1 : 0) > 2) throw new Error(`tree cell ${r},${c} needs three colours`)
+      const front = colours[0] ?? 'g'
+      const back = colours[1]
+      const mask = quad.reduce((m, p, i) => (p === front ? m | (1 << i) : m), 0)
+      cells.push({
+        dx: c,
+        dy: rows - 1 - r,
+        glyph: GLYPH[mask] ?? ' ',
+        fg: palette[front] ?? PINE,
+        bg: back === undefined ? DEFAULT : palette[back] ?? PINE,
+      })
+    }
+  }
+  return { cells, width, big: design.length >= 5, id, green }
+}
+// every shape in every green: SHORT[shape][green]
+const SHORT = SHORT_TREES.map((d, i) => GREENS.map((_, g) => treeShape(d, `short ${i}`, g)))
+const TALL = TALL_TREES.map((d, i) => GREENS.map((_, g) => treeShape(d, `tall ${i}`, g)))
+type Tree = { x: number; passed: boolean; shape: TreeShape }
+
+// A tree from the pool, never the same shape or the same green as the one before it.
+function pickTree(pool: TreeShape[][], last: TreeShape | undefined): TreeShape {
+  const shapes = pool.filter(s => s[0]?.id !== last?.id)
+  const greens = (shapes[rand(0, shapes.length - 1)] ?? []).filter(s => s.green !== last?.green)
+  const pick = greens[rand(0, greens.length - 1)]
+  if (pick === undefined) throw new Error('a tree pool is empty')
+  return pick
+}
 
 // Scene state; a reload starts it over.
 let timer: Timer | undefined
@@ -104,13 +179,15 @@ let site: string | undefined // the band's requestId while Clawd is drawn
 let width = 0
 let working = false
 let flakes: Flake[] = []
-let pines: Pine[] = []
+let trees: Tree[] = []
+let untilTall = 2 // trees until the next tall one: every 2 to 4
 let nextGap = 40
 let groundShift = 0
 let x = HOME
 let target = HOME
 let hop = -1 // index into hopSeq; -1 on the ground
 let hopSeq = HOP
+let tuckFeet = false // this jump clears a big tree: his feet tuck in at the top
 let step = 0
 let blink = 0
 let gaze = 0 // -1 looking left, 1 right
@@ -148,7 +225,7 @@ function newFlake(y: number): Flake {
 function resize(columns: number) {
   width = columns
   flakes = Array.from({ length: Math.max(4, Math.floor(width / 7)) }, () => newFlake(Math.random() * GROUND))
-  pines = pines.filter(p => p.x < width)
+  trees = trees.filter(t => t.x < width)
   x = Math.min(x, Math.max(0, width - WIDTH))
   target = Math.min(target, Math.max(0, width - WIDTH))
 }
@@ -159,10 +236,12 @@ function stop() {
 }
 
 // `wake`: a press or work wakes him; his own idle hops must not, or he never falls asleep.
-function jump(seq: number[], wake = true) {
+// `tuck`: only a jump over a big tree tucks his feet in; the rest keep the legs out.
+function jump(seq: number[], wake = true, tuck = false) {
   if (hop < 0) {
     hop = 0
     hopSeq = seq
+    tuckFeet = tuck
   }
   if (wake) {
     quiet = 0
@@ -228,25 +307,28 @@ function advance(): boolean {
     } else gaze = 1 // he runs to the right
     if (x === HOME && turning === 0 && gaze === 1) {
       groundShift += 2
-      for (const p of pines) {
-        p.x -= 2
-        if (!p.passed && p.x + PINE_WIDTH < x) {
-          p.passed = true
+      for (const t of trees) {
+        t.x -= 2
+        if (!t.passed && t.x + t.shape.width < x) {
+          t.passed = true
           score += 1
           best = Math.max(best, score)
         }
       }
-      pines = pines.filter(p => p.x > -5)
-      const last = pines[pines.length - 1]
+      trees = trees.filter(t => t.x + t.shape.width > 0)
+      const last = trees[trees.length - 1]
       if (last === undefined || last.x < width - nextGap) {
-        pines.push({ x: width, passed: false })
+        untilTall -= 1
+        trees.push({ x: width, passed: false, shape: pickTree(untilTall <= 0 ? TALL : SHORT, last?.shape) })
+        if (untilTall <= 0) untilTall = rand(2, 4)
         nextGap = rand(32, 70)
       }
-      const ahead = (p: Pine) => p.x - (x + WIDTH - 1)
-      if (hop < 0 && pines.some(p => JUMP_AT.includes(ahead(p)))) jump(HOP)
+      const ahead = (t: Tree) => t.x - (x + WIDTH - 1)
+      const next = trees.find(t => JUMP_AT.includes(ahead(t)))
+      if (hop < 0 && next !== undefined) jump(HOP, true, next.shape.big)
     }
   } else {
-    pines = []
+    trees = []
     if (!walking && hop < 0) {
       rest -= 1
       if (rest <= 0) {
@@ -288,23 +370,17 @@ function scene(): string {
     words[i * 3 + 1] = DEFAULT
     words[i * 3 + 2] = DEFAULT
   }
-  const put = (cx: number, cy: number, glyph: string, color: number) => {
+  const put = (cx: number, cy: number, glyph: string, color: number, back = DEFAULT) => {
     if (cx < 0 || cx >= width || cy < 0 || cy >= ROWS) return
     const i = (cy * width + cx) * 3
     words[i] = glyph.codePointAt(0) ?? 0x20
     words[i + 1] = color
+    words[i + 2] = back
   }
 
   for (let cx = 0; cx < width; cx += 1) put(cx, GROUND, gapAt(cx + groundShift) ? ' ' : '▔', GROUND_SNOW)
   for (const f of flakes) put(f.x, Math.floor(f.y), f.glyph, f.color)
-  for (const p of pines) {
-    put(p.x + 1, FEET - 1, '▟', PINE_TOP)
-    put(p.x + 2, FEET - 1, '▙', PINE_TOP)
-    put(p.x, FEET, '▟', PINE)
-    put(p.x + 1, FEET, '█', PINE)
-    put(p.x + 2, FEET, '█', PINE)
-    put(p.x + 3, FEET, '▙', PINE)
-  }
+  for (const t of trees) for (const c of t.shape.cells) put(t.x + c.dx, FEET - c.dy, c.glyph, c.fg, c.bg)
   if (puff > 0) {
     put(x - 1, FEET, PUFF, GROUND_SNOW)
     put(x + WIDTH, FEET, PUFF, GROUND_SNOW)
@@ -313,7 +389,8 @@ function scene(): string {
   if (bang > 0) put(x + Math.floor(WIDTH / 2), FEET - 3 - lift(), BANG, BANG_COLOR)
   if (asleep) {
     const i = zzz % ZZZ.length
-    put(x + WIDTH + i, FEET - 2 - i, ZZZ[i] ?? 'z', ZZZ_COLOR)
+    // drifting up to his right, or to his left when he naps against the right edge
+    put(x + WIDTH + 2 < width ? x + WIDTH + i : x - 1 - i, FEET - 2 - i, ZZZ[i] ?? 'z', ZZZ_COLOR)
   }
   if (best > 0 && width >= 40) {
     const pad = (n: number) => String(n).padStart(5, '0')
@@ -333,7 +410,7 @@ function clawd(): Part[] {
     landing > 0 ||
     (hop < 0 && !working && x === target && step % BOB_EVERY >= BOB_EVERY - 2) // breathing
   if (crouched) return sprite('crouch', eyes)
-  if (hop >= 0) return sprite('tuck', eyes) // in the air
+  if (hop >= 0) return sprite(lift() >= 2 && tuckFeet ? 'apex' : 'tuck', eyes) // in the air; over a big tree, feet in at the top
   const moving = (working && turning === 0) || x !== target // still while he turns
   return sprite(moving && step % 4 < 2 ? 'step' : 'stand', eyes)
 }
@@ -423,13 +500,13 @@ export const register: Register = on => {
     return (
       <Box width={columns} height={ROWS}>
         <Raster key="scene" columns={columns} rows={ROWS} cells={scene()} />
-        {clawd().map((part, r) => (
+        {clawd().flatMap((part, r) => part.text === '' ? [] : [ // a crouch or a jump's top leaves a row empty
           <Box key={`clawd-${r}`} position="absolute" top={FEET - 2 + r - up} left={x + part.left}>
             {spriteFailed
               ? <Text color={ORANGE}>{part.text}</Text>
               : <Client key={`clawd-${r}`} module="./clawd-sprite.tsx" props={{ text: part.text, color: ORANGE }} width={[...part.text].length} height={1} />}
-          </Box>
-        ))}
+          </Box>,
+        ])}
       </Box>
     )
   })

@@ -36,3 +36,14 @@ and the date. Number them; cite the number from the code that the trap touches.
     mod. The install README tells people. (2026-11-22)
 12. **Idle hops leave his sleep timer alone.** A hop that reset the quiet counter kept him awake for
     good. `jump(seq, wake)` takes `wake = false` for idle hops; the sleep test caught it. (2026-11-22)
+13. **A terminal cell shows two colours at most:** its glyph's and its background. A tree pixel grid
+    that puts three in one 2 x 2 cell (pine, trunk and nothing, say) cannot be drawn; `treeShape`
+    refuses it at load, so every test fails at once. Keep the trunk under a whole cell, which means
+    an odd number of cells wide. (2026-11-22)
+14. **The test kit's `find({ type: 'Text', in: 'clawd-0' })` throws when that region is absent;** it
+    does not return undefined. A crouch drops his top row and the top of a jump drops his legs row,
+    so look up the row's Box first (`rowBox`) and read its text only when it is there. (2026-11-22)
+15. **A test past 5 seconds fails as if broken.** The test kit gives each test 5000 ms unless it
+    passes `{ timeoutMs }`; the nap and tree tests run thousands of ticks (2 to 4 s alone) and hit
+    7.0 s and 6.4 s on a busy machine. They take `LONG` (30 s). A failure that names a long test
+    and does not repeat on the next run is this. (2026-11-22)
