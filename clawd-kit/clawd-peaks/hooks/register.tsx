@@ -1,9 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { Register, Timer } from 'claude-code'
 
-// A small blue Clawd in falling snow above the prompt, hopping snow-capped mountains while Claude
-// works. The scene is one Raster; Clawd is two Client regions (clawd-sprite.tsx). `$` is allowed
-// only at call sites, so each hook starts the timer itself.
+// A small blue Clawd in falling snow, hopping snow-capped mountains while Claude works.
+// `$` is allowed only at call sites, so each hook starts the timer itself.
 
 const isOn = atom({ plugin: 'clawd-peaks', key: 'isOn' } as const, true)
 const frame = atom({ plugin: 'clawd-peaks', key: 'frame' } as const, 0)
@@ -18,9 +17,8 @@ const TICK_MS = 90
 // (one redraw in four), so the band never looks frozen.
 const SETTLE_TICKS = Math.round(180_000 / TICK_MS)
 const SLOW_EVERY = 4
-// Lift per tick of a jump: a crouch first (anticipation), then up to three rows, which clears a
-// peak. He crouches 3 or 4 columns before a mountain (JUMP_AT). The test checks every frame for an
-// overlap with any mountain.
+// Lift per tick of a jump: a crouch, then up to three rows, which clears a peak.
+// He takes off 3 or 4 columns before a mountain (JUMP_AT).
 const HOP = [0, 1, 2, 3, 3, 3, 3, 3, 3, 3, 2, 1]
 const JUMP_AT = [3, 4]
 // A little happy hop when a turn ends: crouch, up one row, down.
@@ -39,10 +37,8 @@ const SCORE = 0x7fa6d6
 const BLUE = '#7cc4ff'
 const FLAKES = ['✻', '✽', '✶', '✢', '*', '·', '·', '.']
 
-// Clawd as pixels, turned into quadrant glyphs (2 x 2 pixels a cell). Two text rows hold four pixel
-// rows: head; eyes with arms out; body; four legs. 7 cells wide, rounder than the orange one's 9.
-// Crouch and squash poses are the whole sprite one pixel lower with the legs tucked.
-// Tried and dropped: 5 wide (read as an "M"), no legs (a blob), eyes two pixels tall (bars).
+// Clawd as pixels in quadrant glyphs (2 x 2 a cell): head; eyes with arms out; body; four legs.
+// Crouch and squash are the whole sprite a pixel lower, legs tucked.
 const PX = 14
 const GLYPH = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'
 const pxRow = (on: (i: number) => boolean) => Array.from({ length: PX }, (_, i) => (on(i) ? '#' : '.')).join('')
